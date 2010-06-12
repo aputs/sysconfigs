@@ -1,0 +1,91 @@
+include /etc/monit.d/*
+
+set logfile syslog
+set statefile /tmp/.monit.state
+
+set daemon 120
+#	with start delay 240
+
+set eventqueue
+	basedir /var/monit
+	slots 100
+
+set mmonit http://monit:monit@120.89.49.203:8070/collector
+
+set httpd port 2812 and
+	use address 0.0.0.0
+#	use address localhost
+#	allow localhost
+	allow admin:monit
+
+check system localhost
+	if loadavg (1min) > 4 then alert
+	if loadavg (5min) > 2 then alert
+	if memory usage > 90% then alert
+	if cpu usage (user) > 90% then alert
+	if cpu usage (system) > 70% then alert
+	if cpu usage (wait) > 50% then alert
+
+check process sshd with pidfile /var/run/sshd.pid
+	start program "/etc/init.d/sshd start"
+	stop program "/etc/init.d/sshd stop"
+	if failed port 22 protocol ssh then restart
+	if 5 restarts within 5 cycles then timeout
+
+#mysql
+check process mysqld with pidfile /var/run/mysqld/mysqld.pid
+	group database
+	start program = "/etc/init.d/mysqld start"
+	stop program = "/etc/init.d/mysqld stop"
+	if failed host 127.0.0.1 port 3306 then restart
+	if 5 restarts within 5 cycles then timeout
+    
+check process php-fpm with pidfile /var/run/php-fpm.pid
+	group servers
+	start program = "/etc/init.d/php-fpm start"
+	stop program = "/etc/init.d/php-fpm stop"
+
+#nginx
+check file nginx.config.main with path /usr/local/nginx/conf/nginx.conf
+	if changed timestamp
+	then exec "/etc/init.d/nginx reload"
+	depend nginx
+
+check file nginx.config.default with path /usr/local/nginx/conf/sites/00_default
+	if changed timestamp
+	then exec "/etc/init.d/nginx reload"
+	depend nginx
+
+check process nginx with pidfile /var/run/nginx.pid
+	group servers
+	start program = "/etc/init.d/nginx start"
+	stop program = "/etc/init.d/nginx stop"
+	if 5 restarts within 5 cycles then timeout
+
+#memcached
+check process memcached matching "memcached"
+        group servers
+        start program = "/etc/init.d/memcached start"
+        stop program = "/etc/init.d/memcached stop"
+
+#redis
+check process redis with pidfile /var/run/redis.pid
+	group servers
+	start program = "/etc/init.d/redis-server start"
+	stop program = "/etc/init.d/redis-server stop"
+
+#monit related
+check file monit.etc.monitrc with path /etc/monitrc
+	if changed timestamp
+	then exec "/etc/init.d/monit restart"
+
+check file monit.bin.monit with path /usr/local/bin/monit
+	if changed timestamp
+	then exec "/etc/init.d/monit restart"
+
+#content_server
+#check process content_server with pidfile /home/wap-prod/proj/cdn/tmp/pids/content_server.pid
+#	group servers
+#	start program = "/etc/init.d/content_server start"
+#	stop program = "/etc/init.d/content_server stop"
+
