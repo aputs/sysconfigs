@@ -1,0 +1,33 @@
+#keep a whole year of logs
+#rename logs to %Y%m%d/+%Y%m%d.access
+/var/log/smartwap/access.log {
+  daily
+  nocompress
+  rotate 365
+  missingok
+  nocreate
+  sharedscripts
+  postrotate
+    FNAME=`echo $1 | sed -e 's/  *$//'`.1
+    DIR=`date --date='-1 day' +%Y%m`
+    EXT=`basename $1 | cut -d'.' -f1`
+    DEST=`dirname $FNAME`/$DIR/`date --date='-1 day' +%Y%m%d`.$EXT
+    mkdir -p $DIR
+    mv $FNAME $DEST
+    test ! -f /var/run/nginx.pid || kill -USR1 `cat /var/run/nginx.pid`
+  endscript  
+}
+
+#error logs
+/var/log/smartwap/error.log {
+  daily
+  compress
+  delaycompress
+  rotate 2
+  missingok
+  nocreate
+  postrotate
+    test ! -f /var/run/nginx.pid || kill -USR1 `cat /var/run/nginx.pid`
+  endscript
+}
+

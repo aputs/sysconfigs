@@ -1,0 +1,14 @@
+/var/log/php-fpm.log {
+	daily
+	compress
+	delaycompress
+	rotate 2
+	missingok
+	notifempty
+	create 644 root root
+	sharedscripts
+    postrotate
+        /sbin/service php-fpm flush-logs > /dev/null
+    endscript  
+}
+
